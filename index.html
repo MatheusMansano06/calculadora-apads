@@ -61,8 +61,7 @@
       color: #c084fc;
     }
 
-    input[type="number"],
-    input[type="file"] {
+    input[type="text"] {
       width: 100%;
       padding: 10px;
       margin-top: 5px;
@@ -81,7 +80,7 @@
     }
 
     .results p {
-      margin: 10px 0;
+      margin: 10px 0 5px;
       font-size: 16px;
     }
 
@@ -90,26 +89,43 @@
       font-weight: bold;
     }
 
+    .tooltip {
+      position: relative;
+      cursor: help;
+      color: #f87171;
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: max-content;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
     .explanation {
       font-size: 13px;
       color: #aaa;
-      margin-top: 4px;
       margin-bottom: 10px;
     }
 
-    .formula {
-      font-family: monospace;
-      color: #fff;
-      background: #3b0b6d;
-      padding: 4px 8px;
-      border-radius: 6px;
-      display: inline-block;
-      margin-top: 2px;
-    }
-
     #ocrStatus {
-      font-size: 12px;
-      color: #aaa;
+      font-size: 14px;
+      color: #facc15;
       margin-top: 5px;
       margin-bottom: 10px;
     }
@@ -118,6 +134,13 @@
       margin-top: 15px;
       font-size: 12px;
       color: #bbb;
+      font-style: italic;
+    }
+
+    .abs-values {
+      font-size: 13px;
+      color: #ccc;
+      margin-top: 3px;
       font-style: italic;
     }
   </style>
@@ -129,38 +152,39 @@
     <p class="sub">Calculadora de Performance em ADS</p>
 
     <div style="margin-bottom: 25px;">
-      <label>Ou envie um print do painel:</label>
-      <input type="file" id="ocrImage" accept="image/*" />
-      <p id="ocrStatus">Nenhuma imagem enviada</p>
+      <p id="ocrStatus"><strong>🔧 Em construção:</strong> Upload de print ainda em manutenção</p>
     </div>
 
     <label for="impressions">Impressões</label>
-    <input type="number" id="impressions" placeholder="Ex: 100000" />
+    <input type="text" id="impressions" placeholder="Ex: 100000" />
 
     <label for="clicks">Cliques</label>
-    <input type="number" id="clicks" placeholder="Ex: 500" />
+    <input type="text" id="clicks" placeholder="Ex: 500" />
 
     <label for="sales">Vendas por Ads</label>
-    <input type="number" id="sales" placeholder="Ex: 30" />
+    <input type="text" id="sales" placeholder="Ex: 30" />
 
-    <div class="results" id="results">
+    <div class="results">
       <p>
-        <strong>CTR:</strong> <span class="highlight" id="ctr">0%</span><br/>
-        <span class="explanation">Quantas pessoas clicaram no anúncio após vê-lo</span><br/>
-        <span class="formula">CTR = (Cliques × 100) ÷ Impressões</span>
+        <strong>CTR:</strong> <span class="highlight" id="ctr">0%</span>
+        <span class="tooltip">❓<span class="tooltiptext">CTR = (Impressões × 100) ÷ Cliques</span></span>
       </p>
-
-      <p>
-        <strong>CVR:</strong> <span class="highlight" id="cvr">0%</span><br/>
-        <span class="explanation">Quantos cliques viraram vendas</span><br/>
-        <span class="formula">CVR = (Vendas × 100) ÷ Cliques</span>
-      </p>
+      <p class="abs-values" id="ctrAbs"></p>
+      <p class="explanation">Quantas pessoas clicaram no anúncio após vê-lo</p>
 
       <p>
-        <strong>Conversão por Impressão:</strong> <span class="highlight" id="convImp">0%</span><br/>
-        <span class="explanation">Vendas em relação a todas as impressões</span><br/>
-        <span class="formula">Conversão = (Vendas × 100) ÷ Impressões</span>
+        <strong>CVR:</strong> <span class="highlight" id="cvr">0%</span>
+        <span class="tooltip">❓<span class="tooltiptext">CVR = (Cliques × 100) ÷ Vendas</span></span>
       </p>
+      <p class="abs-values" id="cvrAbs"></p>
+      <p class="explanation">Quantos cliques viraram vendas</p>
+
+      <p>
+        <strong>Conversão por Impressão:</strong> <span class="highlight" id="convImp">0%</span>
+        <span class="tooltip">❓<span class="tooltiptext">Conversão = (Vendas × 100) ÷ Impressões</span></span>
+      </p>
+      <p class="abs-values" id="convImpAbs"></p>
+      <p class="explanation">Vendas em relação a todas as impressões</p>
 
       <p class="note">*Os valores foram arredondados para facilitar a leitura.</p>
     </div>
@@ -175,56 +199,35 @@
     const cvrResult = document.getElementById("cvr");
     const convImpResult = document.getElementById("convImp");
 
-    const ocrImage = document.getElementById("ocrImage");
-    const ocrStatus = document.getElementById("ocrStatus");
+    const ctrAbs = document.getElementById("ctrAbs");
+    const cvrAbs = document.getElementById("cvrAbs");
+    const convImpAbs = document.getElementById("convImpAbs");
 
-    function formatPercent(value) {
-      return `${parseFloat(value).toFixed(1)}%`;
+    function parseNumber(text) {
+      return parseFloat(text.replace(/\./g, "").replace(",", ".")) || 0;
+    }
+
+    function formatPercent(value, digits = 1) {
+      return `${value.toFixed(digits)}%`;
     }
 
     function updateResults() {
-      const impressions = parseFloat(impressionsInput.value) || 0;
-      const clicks = parseFloat(clicksInput.value) || 0;
-      const sales = parseFloat(salesInput.value) || 0;
+      const impressions = parseNumber(impressionsInput.value);
+      const clicks = parseNumber(clicksInput.value);
+      const sales = parseNumber(salesInput.value);
 
-      const ctr = impressions > 0 ? (clicks * 100) / impressions : 0;
-      const cvr = clicks > 0 ? (sales * 100) / clicks : 0;
+      const ctr = clicks > 0 ? (impressions * 100) / clicks : 0;
+      const cvr = sales > 0 ? (clicks * 100) / sales : 0;
       const convImp = impressions > 0 ? (sales * 100) / impressions : 0;
 
       ctrResult.textContent = formatPercent(ctr);
       cvrResult.textContent = formatPercent(cvr);
       convImpResult.textContent = formatPercent(convImp);
+
+      ctrAbs.textContent = `(${impressions.toLocaleString()} × 100 ÷ ${clicks.toLocaleString()})`;
+      cvrAbs.textContent = `(${clicks.toLocaleString()} × 100 ÷ ${sales.toLocaleString()})`;
+      convImpAbs.textContent = `(${sales.toLocaleString()} × 100 ÷ ${impressions.toLocaleString()})`;
     }
-
-    ocrImage.addEventListener("change", async () => {
-      const file = ocrImage.files[0];
-      if (!file) return;
-
-      ocrStatus.textContent = "⏳ Processando imagem com OCR...";
-
-      const { data: { text } } = await Tesseract.recognize(file, 'por');
-      const lowerText = text.toLowerCase();
-
-      function extrairValorPalavra(chave) {
-        const linhas = lowerText.split('\n');
-        for (let linha of linhas) {
-          if (linha.includes(chave)) {
-            const numeros = linha.match(/\d{1,3}(\.\d{3})*(,\d+)?|\d+/g);
-            if (numeros && numeros.length > 0) {
-              return numeros[0].replace(/\./g, "").replace(",", ".");
-            }
-          }
-        }
-        return "";
-      }
-
-      impressionsInput.value = extrairValorPalavra("impress") || "";
-      clicksInput.value = extrairValorPalavra("clique") || "";
-      salesInput.value = extrairValorPalavra("venda") || "";
-
-      updateResults();
-      ocrStatus.textContent = "✅ Texto detectado e campos preenchidos (edite se necessário)";
-    });
 
     impressionsInput.addEventListener("input", updateResults);
     clicksInput.addEventListener("input", updateResults);
