@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Assessoria APADS - Calculadora ADS</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -60,7 +61,8 @@
       color: #c084fc;
     }
 
-    input {
+    input[type="number"],
+    input[type="file"] {
       width: 100%;
       padding: 10px;
       margin-top: 5px;
@@ -104,6 +106,20 @@
       display: inline-block;
       margin-top: 2px;
     }
+
+    #ocrStatus {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 5px;
+      margin-bottom: 10px;
+    }
+
+    .note {
+      margin-top: 15px;
+      font-size: 12px;
+      color: #bbb;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -111,6 +127,12 @@
     <img src="assets/MentoriaAPADs.jpeg" alt="Logo Assessoria APADS" class="logo">
     <h1>Assessoria <span class="apads">APADS</span></h1>
     <p class="sub">Calculadora de Performance em ADS</p>
+
+    <div style="margin-bottom: 25px;">
+      <label>Ou envie um print do painel:</label>
+      <input type="file" id="ocrImage" accept="image/*" />
+      <p id="ocrStatus">Nenhuma imagem enviada</p>
+    </div>
 
     <label for="impressions">Impressões</label>
     <input type="number" id="impressions" placeholder="Ex: 100000" />
@@ -139,6 +161,8 @@
         <span class="explanation">Vendas em relação a todas as impressões</span><br/>
         <span class="formula">Conversão = (Vendas × 100) ÷ Impressões</span>
       </p>
+
+      <p class="note">*Os valores foram arredondados para facilitar a leitura.</p>
     </div>
   </div>
 
@@ -151,19 +175,56 @@
     const cvrResult = document.getElementById("cvr");
     const convImpResult = document.getElementById("convImp");
 
+    const ocrImage = document.getElementById("ocrImage");
+    const ocrStatus = document.getElementById("ocrStatus");
+
+    function formatPercent(value) {
+      return `${parseFloat(value).toFixed(1)}%`;
+    }
+
     function updateResults() {
       const impressions = parseFloat(impressionsInput.value) || 0;
       const clicks = parseFloat(clicksInput.value) || 0;
       const sales = parseFloat(salesInput.value) || 0;
 
-      const ctr = impressions > 0 ? ((clicks * 100) / impressions).toFixed(2) : "0.00";
-      const cvr = clicks > 0 ? ((sales * 100) / clicks).toFixed(2) : "0.00";
-      const convImp = impressions > 0 ? ((sales * 100) / impressions).toFixed(2) : "0.00";
+      const ctr = impressions > 0 ? (clicks * 100) / impressions : 0;
+      const cvr = clicks > 0 ? (sales * 100) / clicks : 0;
+      const convImp = impressions > 0 ? (sales * 100) / impressions : 0;
 
-      ctrResult.textContent = `${ctr}%`;
-      cvrResult.textContent = `${cvr}%`;
-      convImpResult.textContent = `${convImp}%`;
+      ctrResult.textContent = formatPercent(ctr);
+      cvrResult.textContent = formatPercent(cvr);
+      convImpResult.textContent = formatPercent(convImp);
     }
+
+    ocrImage.addEventListener("change", async () => {
+      const file = ocrImage.files[0];
+      if (!file) return;
+
+      ocrStatus.textContent = "⏳ Processando imagem com OCR...";
+
+      const { data: { text } } = await Tesseract.recognize(file, 'por');
+      const lowerText = text.toLowerCase();
+
+      function extrairValorPalavra(chave) {
+        const linhas = lowerText.split('\n');
+        for (let linha of linhas) {
+          if (linha.includes(chave)) {
+            const numeros = linha.match(/\d{1,3}(\.\d{3})*(,\d+)?|\d+/g);
+            if (numeros && numeros.length > 0) {
+              return numeros[0].replace(/\./g, "").replace(",", ".");
+            }
+          }
+        }
+        return "";
+      }
+
+      impressionsInput.value = extrairValorPalavra("impress") || "";
+      clicksInput.value = extrairValorPalavra("clique") || "";
+      salesInput.value = extrairValorPalavra("venda") || "";
+
+      updateResults();
+      ocrStatus.textContent = "✅ Texto detectado e campos preenchidos (edite se necessário)";
+    });
 
     impressionsInput.addEventListener("input", updateResults);
     clicksInput.addEventListener("input", updateResults);
@@ -171,4 +232,3 @@
   </script>
 </body>
 </html>
-
