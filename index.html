@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Assessoria APADS - Calculadora ADS</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a0039;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: #12002f;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(144, 97, 255, 0.2);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    img.logo {
+      width: 130px;
+      border-radius: 15px;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+
+    .apads {
+      color: #c084fc;
+      font-weight: bold;
+    }
+
+    .sub {
+      color: #ccc;
+      font-size: 14px;
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      text-align: left;
+      margin-top: 15px;
+      font-weight: bold;
+      color: #c084fc;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      background: #26004d;
+      color: #fff;
+    }
+
+    .results {
+      margin-top: 25px;
+      background: #2d015e;
+      padding: 15px;
+      border-radius: 12px;
+    }
+
+    .results p {
+      margin: 10px 0;
+      font-size: 16px;
+    }
+
+    .highlight {
+      color: #e879f9;
+      font-weight: bold;
+    }
+
+    .explanation {
+      font-size: 13px;
+      color: #aaa;
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+
+    .formula {
+      font-family: monospace;
+      color: #fff;
+      background: #3b0b6d;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="assets/MentoriaAPADs.jpeg" alt="Logo Assessoria APADS" class="logo">
+    <h1>Assessoria <span class="apads">APADS</span></h1>
+    <p class="sub">Calculadora de Performance em ADS</p>
+
+    <label for="impressions">Impressões</label>
+    <input type="number" id="impressions" placeholder="Ex: 100000" />
+
+    <label for="clicks">Cliques</label>
+    <input type="number" id="clicks" placeholder="Ex: 500" />
+
+    <label for="sales">Vendas por Ads</label>
+    <input type="number" id="sales" placeholder="Ex: 30" />
+
+    <div class="results" id="results">
+      <p>
+        <strong>CTR:</strong> <span class="highlight" id="ctr">0%</span><br/>
+        <span class="explanation">Quantas pessoas clicaram no anúncio após vê-lo</span><br/>
+        <span class="formula">CTR = (Cliques × 100) ÷ Impressões</span>
+      </p>
+
+      <p>
+        <strong>CVR:</strong> <span class="highlight" id="cvr">0%</span><br/>
+        <span class="explanation">Quantos cliques viraram vendas</span><br/>
+        <span class="formula">CVR = (Vendas × 100) ÷ Cliques</span>
+      </p>
+
+      <p>
+        <strong>Conversão por Impressão:</strong> <span class="highlight" id="convImp">0%</span><br/>
+        <span class="explanation">Vendas em relação a todas as impressões</span><br/>
+        <span class="formula">Conversão = (Vendas × 100) ÷ Impressões</span>
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const impressionsInput = document.getElementById("impressions");
+    const clicksInput = document.getElementById("clicks");
+    const salesInput = document.getElementById("sales");
+
+    const ctrResult = document.getElementById("ctr");
+    const cvrResult = document.getElementById("cvr");
+    const convImpResult = document.getElementById("convImp");
+
+    function updateResults() {
+      const impressions = parseFloat(impressionsInput.value) || 0;
+      const clicks = parseFloat(clicksInput.value) || 0;
+      const sales = parseFloat(salesInput.value) || 0;
+
+      const ctr = impressions > 0 ? ((clicks * 100) / impressions).toFixed(2) : "0.00";
+      const cvr = clicks > 0 ? ((sales * 100) / clicks).toFixed(2) : "0.00";
+      const convImp = impressions > 0 ? ((sales * 100) / impressions).toFixed(2) : "0.00";
+
+      ctrResult.textContent = `${ctr}%`;
+      cvrResult.textContent = `${cvr}%`;
+      convImpResult.textContent = `${convImp}%`;
+    }
+
+    impressionsInput.addEventListener("input", updateResults);
+    clicksInput.addEventListener("input", updateResults);
+    salesInput.addEventListener("input", updateResults);
+  </script>
+</body>
+</html>
