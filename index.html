@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Assessoria APADS - Calculadora ADS</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@2.1.5/dist/tesseract.min.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -85,9 +84,12 @@
     }
 
     .highlight {
-      color: #e879f9;
       font-weight: bold;
     }
+
+    .low { color: #f87171; }
+    .medium { color: #facc15; }
+    .high { color: #4ade80; }
 
     .tooltip {
       position: relative;
@@ -143,6 +145,33 @@
       margin-top: 3px;
       font-style: italic;
     }
+
+    button.print-btn {
+      margin-top: 20px;
+      padding: 10px 18px;
+      background-color: #c084fc;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button.print-btn:hover {
+      background-color: #a855f7;
+    }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 22px; }
+      .container { padding: 20px; }
+    }
+
+    @media print {
+      .print-btn, #ocrStatus, input {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -156,25 +185,27 @@
     </div>
 
     <label for="impressions">Impressões</label>
-    <input type="text" id="impressions" placeholder="Ex: 100000" />
+    <input type="text" id="impressions" placeholder="Ex: 100000" oninput="this.value = this.value.replace(/[^0-9.,]/g, '')" />
 
     <label for="clicks">Cliques</label>
-    <input type="text" id="clicks" placeholder="Ex: 500" />
+    <input type="text" id="clicks" placeholder="Ex: 500" oninput="this.value = this.value.replace(/[^0-9.,]/g, '')" />
 
     <label for="sales">Vendas por Ads</label>
-    <input type="text" id="sales" placeholder="Ex: 30" />
+    <input type="text" id="sales" placeholder="Ex: 30" oninput="this.value = this.value.replace(/[^0-9.,]/g, '')" />
 
     <div class="results">
       <p>
         <strong>CTR:</strong> <span class="highlight" id="ctr">0%</span>
-        <span class="tooltip">❓<span class="tooltiptext">CTR = (Impressões × 100) ÷ Cliques</span></span>
+        <span class="tooltip">❓<span class="tooltiptext">CTR = (Cliques × 100) ÷ Impressões</span></span>
+        <span id="ctrLabel"></span>
       </p>
       <p class="abs-values" id="ctrAbs"></p>
       <p class="explanation">Quantas pessoas clicaram no anúncio após vê-lo</p>
 
       <p>
         <strong>CVR:</strong> <span class="highlight" id="cvr">0%</span>
-        <span class="tooltip">❓<span class="tooltiptext">CVR = (Cliques × 100) ÷ Vendas</span></span>
+        <span class="tooltip">❓<span class="tooltiptext">CVR = (Vendas × 100) ÷ Cliques</span></span>
+        <span id="cvrLabel"></span>
       </p>
       <p class="abs-values" id="cvrAbs"></p>
       <p class="explanation">Quantos cliques viraram vendas</p>
@@ -182,12 +213,15 @@
       <p>
         <strong>Conversão por Impressão:</strong> <span class="highlight" id="convImp">0%</span>
         <span class="tooltip">❓<span class="tooltiptext">Conversão = (Vendas × 100) ÷ Impressões</span></span>
+        <span id="convImpLabel"></span>
       </p>
       <p class="abs-values" id="convImpAbs"></p>
       <p class="explanation">Vendas em relação a todas as impressões</p>
 
       <p class="note">*Os valores foram arredondados para facilitar a leitura.</p>
     </div>
+
+    <button class="print-btn" onclick="window.print()">🧾 Imprimir Resultado</button>
   </div>
 
   <script>
@@ -203,12 +237,22 @@
     const cvrAbs = document.getElementById("cvrAbs");
     const convImpAbs = document.getElementById("convImpAbs");
 
+    const ctrLabel = document.getElementById("ctrLabel");
+    const cvrLabel = document.getElementById("cvrLabel");
+    const convImpLabel = document.getElementById("convImpLabel");
+
     function parseNumber(text) {
       return parseFloat(text.replace(/\./g, "").replace(",", ".")) || 0;
     }
 
-    function formatPercent(value, digits = 1) {
+    function formatPercent(value, digits = 3) {
       return `${value.toFixed(digits)}%`;
+    }
+
+    function getLabel(value) {
+      if (value >= 10) return { label: "Alta 🚀", class: "high" };
+      if (value >= 3) return { label: "Média ⚖️", class: "medium" };
+      return { label: "Baixa ⚠️", class: "low" };
     }
 
     function updateResults() {
@@ -216,16 +260,24 @@
       const clicks = parseNumber(clicksInput.value);
       const sales = parseNumber(salesInput.value);
 
-      const ctr = clicks > 0 ? (impressions * 100) / clicks : 0;
-      const cvr = sales > 0 ? (clicks * 100) / sales : 0;
+      const ctr = impressions > 0 ? (clicks * 100) / impressions : 0;
+      const cvr = clicks > 0 ? (sales * 100) / clicks : 0;
       const convImp = impressions > 0 ? (sales * 100) / impressions : 0;
+
+      const ctrData = getLabel(ctr);
+      const cvrData = getLabel(cvr);
+      const convImpData = getLabel(convImp);
 
       ctrResult.textContent = formatPercent(ctr);
       cvrResult.textContent = formatPercent(cvr);
       convImpResult.textContent = formatPercent(convImp);
 
-      ctrAbs.textContent = `(${impressions.toLocaleString()} × 100 ÷ ${clicks.toLocaleString()})`;
-      cvrAbs.textContent = `(${clicks.toLocaleString()} × 100 ÷ ${sales.toLocaleString()})`;
+      ctrLabel.innerHTML = ` - <span class="${ctrData.class}">${ctrData.label}</span>`;
+      cvrLabel.innerHTML = ` - <span class="${cvrData.class}">${cvrData.label}</span>`;
+      convImpLabel.innerHTML = ` - <span class="${convImpData.class}">${convImpData.label}</span>`;
+
+      ctrAbs.textContent = `(${clicks.toLocaleString()} × 100 ÷ ${impressions.toLocaleString()})`;
+      cvrAbs.textContent = `(${sales.toLocaleString()} × 100 ÷ ${clicks.toLocaleString()})`;
       convImpAbs.textContent = `(${sales.toLocaleString()} × 100 ÷ ${impressions.toLocaleString()})`;
     }
 
